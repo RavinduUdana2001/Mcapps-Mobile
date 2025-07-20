@@ -39,6 +39,14 @@ dependencies:
   shared_preferences: ^2.5.3
   path_provider: ^2.1.5
   lottie: ^3.3.1
+  firebase_core: ^3.15.1
+  firebase_auth: ^5.6.2
+  cloud_firestore: ^5.6.11
+  firebase_storage: ^12.4.9
+  cached_network_image: ^3.4.1
+  intl: ^0.20.2
+  flutter_launcher_icons: ^0.14.4
+  carousel_slider: ^5.1.1
 
 
 dev_dependencies:
@@ -96,3 +104,8 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/android.jpg"  # <-- your image path

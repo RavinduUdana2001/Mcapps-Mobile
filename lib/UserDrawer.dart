@@ -5,11 +5,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
 import 'package:mcapps/login.dart';
+import 'package:http/http.dart' as http;
 
 class UserDrawer extends StatefulWidget {
   final Map<String, dynamic> userData;
+  final VoidCallback onProfileImageUpdated;
 
-  const UserDrawer({super.key, required this.userData});
+  const UserDrawer({
+    super.key,
+    required this.userData,
+    required this.onProfileImageUpdated,
+  });
 
   @override
   State<UserDrawer> createState() => _UserDrawerState();
@@ -26,29 +32,106 @@ class _UserDrawerState extends State<UserDrawer> {
 
   Future<void> _loadProfileImage() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? email = widget.userData['mail'];
     String? path = prefs.getString('profileImage');
+
+    // Check local storage first
     if (path != null && File(path).existsSync()) {
       setState(() {
         _profileImage = File(path);
       });
     }
+    // Then try to fetch from server
+    else if (email != null) {
+      try {
+        final response = await http.post(
+          Uri.parse(
+            "https://test.mchostlk.com/get_profile_image.php",
+          ), // Replace with your server URL
+          body: {'email': email},
+        );
+
+        if (response.statusCode == 200) {
+          final imageUrl = response.body.trim();
+
+          final imageResponse = await http.get(Uri.parse(imageUrl));
+          final directory = await getApplicationDocumentsDirectory();
+          final filePath = '${directory.path}/downloaded_profile.jpg';
+          final file = File(filePath);
+          await file.writeAsBytes(imageResponse.bodyBytes);
+
+          await prefs.setString('profileImage', file.path);
+          setState(() {
+            _profileImage = file;
+          });
+        }
+      } catch (e) {
+        debugPrint("Error loading image from server: $e");
+      }
+    }
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
 
     if (pickedFile != null) {
       final directory = await getApplicationDocumentsDirectory();
       final fileName = basename(pickedFile.path);
-      final savedImage = await File(pickedFile.path).copy('${directory.path}/$fileName');
+      final savedImage = await File(
+        pickedFile.path,
+      ).copy('${directory.path}/$fileName');
+
+      // Upload to PHP server
+      await _uploadToServer(
+        savedImage,
+        widget.userData['mail'],
+        widget.userData['displayname'],
+      );
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString('profileImage', savedImage.path);
+      String? email = widget.userData['mail'];
+      String? path = email != null
+          ? prefs.getString('profileImage_$email')
+          : null;
 
       setState(() {
         _profileImage = savedImage;
       });
+
+      widget.onProfileImageUpdated();
+    }
+  }
+
+  Future<void> _uploadToServer(
+    File imageFile,
+    String? email,
+    String? name,
+  ) async {
+    if (email == null || name == null) return;
+
+    final uri = Uri.parse(
+      "https://test.mchostlk.com/upload_profile.php",
+    ); // Replace with your server URL
+
+    try {
+      final request = http.MultipartRequest('POST', uri)
+        ..fields['email'] = email
+        ..fields['name'] = name
+        ..files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+
+      final response = await request.send();
+
+      if (response.statusCode == 200) {
+        debugPrint("Image upload successful");
+      } else {
+        debugPrint("Image upload failed: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("Upload error: $e");
     }
   }
 
@@ -68,9 +151,7 @@ class _UserDrawerState extends State<UserDrawer> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-              ),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.05)),
               child: Column(
                 children: [
                   Stack(
@@ -78,9 +159,15 @@ class _UserDrawerState extends State<UserDrawer> {
                       CircleAvatar(
                         radius: 40,
                         backgroundColor: Colors.white12,
-                        backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
+                        backgroundImage: _profileImage != null
+                            ? FileImage(_profileImage!)
+                            : null,
                         child: _profileImage == null
-                            ? const Icon(Icons.person, size: 40, color: Colors.white70)
+                            ? const Icon(
+                                Icons.person,
+                                size: 40,
+                                color: Colors.white70,
+                              )
                             : null,
                       ),
                       Positioned(
@@ -94,16 +181,24 @@ class _UserDrawerState extends State<UserDrawer> {
                               shape: BoxShape.circle,
                             ),
                             padding: const EdgeInsets.all(4),
-                            child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              size: 16,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
-                      )
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Text(
                     widget.userData['displayname'] ?? 'User',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   Text(
                     widget.userData['mail'] ?? '',
@@ -118,25 +213,50 @@ class _UserDrawerState extends State<UserDrawer> {
                 padding: EdgeInsets.zero,
                 children: [
                   const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 8,
+                    ),
                     child: Text(
                       'User Info',
-                      style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  _buildInfoTile(Icons.business, "Company", widget.userData['company']),
-                  _buildInfoTile(Icons.badge, "Title", widget.userData['title']),
-                  _buildInfoTile(Icons.account_tree, "Department", widget.userData['department']),
+                  _buildInfoTile(
+                    Icons.business,
+                    "Company",
+                    widget.userData['company'],
+                  ),
+                  _buildInfoTile(
+                    Icons.badge,
+                    "Title",
+                    widget.userData['title'],
+                  ),
+                  _buildInfoTile(
+                    Icons.account_tree,
+                    "Department",
+                    widget.userData['department'],
+                  ),
                   const Divider(color: Colors.white24, height: 30),
                   ListTile(
                     leading: const Icon(Icons.logout, color: Colors.redAccent),
                     title: const Text(
                       'Logout',
-                      style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     onTap: () async {
-                      SharedPreferences prefs = await SharedPreferences.getInstance();
-                      await prefs.clear();
+                      SharedPreferences prefs =
+                          await SharedPreferences.getInstance();
+                      await prefs.remove('isLoggedIn');
+                      await prefs.remove('sessionToken');
+                      // DO NOT remove 'profileImage' or 'email'
+
                       if (!mounted) return;
                       Navigator.of(context).pushAndRemoveUntil(
                         MaterialPageRoute(builder: (_) => const LoginPage()),

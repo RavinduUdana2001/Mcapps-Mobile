@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:mcapps/login.dart';
+import 'package:firebase_core/firebase_core.dart'; // ✅ Firebase core
+import 'package:flutter/services.dart';
 import 'package:mcapps/splashscreen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // ✅ Necessary before using SharedPreferences
+  WidgetsFlutterBinding.ensureInitialized();
 
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  // ✅ Initialize Firebase
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 

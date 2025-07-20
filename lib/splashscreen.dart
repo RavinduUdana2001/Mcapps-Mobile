@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mcapps/login.dart';
 import 'package:mcapps/mainpage.dart';
-import 'package:lottie/lottie.dart';
 
 class Splashscreen extends StatefulWidget {
   const Splashscreen({super.key});
@@ -103,20 +102,7 @@ class _SplashscreenState extends State<Splashscreen>
                   child: Image.asset('assets/loading-logo.png', height: 110),
                 ),
 
-                // Lottie animation (properly sized & centered)
-                SizedBox(
-                  height: 130,
-                  width: 130,
-                  child: Lottie.asset(
-                    'assets/lottie2.json',
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const CircularProgressIndicator(
-                        color: Colors.white,
-                      );
-                    },
-                  ),
-                ),
+
               ],
             ),
           ),

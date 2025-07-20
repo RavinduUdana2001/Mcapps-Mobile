@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:mcapps/UserDrawer.dart';
+import 'package:mcapps/pages/NewsEvents.dart';
 import 'package:mcapps/pages/homepage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 
 class Mainpage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -14,6 +17,10 @@ class Mainpage extends StatefulWidget {
 
 class _MainpageState extends State<Mainpage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  Future<String?> _loadProfileImagePath() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('profileImage');
+  }
 
   int _selectedIndex = 0;
 
@@ -25,6 +32,10 @@ class _MainpageState extends State<Mainpage> {
 
   late final List<Widget> _pages;
 
+  void _refreshProfileImage() {
+    setState(() {}); // Triggers rebuild to reload image from SharedPreferences
+  }
+
   @override
   void initState() {
     super.initState();
@@ -33,12 +44,7 @@ class _MainpageState extends State<Mainpage> {
 
     _pages = [
       HomePage(displayName: user['displayname'] ?? 'User'),
-      const Center(
-        child: Text(
-          'Search Page',
-          style: TextStyle(fontSize: 24, color: Colors.white),
-        ),
-      ),
+      NewsEventsPage(),
       const Center(
         child: Text(
           'Alerts Page',
@@ -58,7 +64,11 @@ class _MainpageState extends State<Mainpage> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey, // <-- Add this line
-      drawer: UserDrawer(userData: widget.userData), // <-- Add the drawer
+      drawer: UserDrawer(
+        userData: widget.userData,
+        onProfileImageUpdated:
+            _refreshProfileImage, // 🔁 Let Mainpage know when image is updated
+      ), // <-- Add the drawer
       extendBodyBehindAppBar: true,
       extendBody: true,
       backgroundColor: Colors.transparent,
@@ -66,12 +76,49 @@ class _MainpageState extends State<Mainpage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.account_circle, color: Colors.white, size: 28),
-          onPressed: () {
-            _scaffoldKey.currentState?.openDrawer(); // Open the drawer
-          },
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: FutureBuilder<String?>(
+            future: _loadProfileImagePath(),
+            builder: (context, snapshot) {
+              final imagePath = snapshot.data;
+              final hasImage =
+                  imagePath != null && File(imagePath).existsSync();
+
+              return GestureDetector(
+                onTap: () {
+                  _scaffoldKey.currentState?.openDrawer();
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.8),
+                      width: 2,
+                    ),
+                  ),
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.white12,
+                    backgroundImage: hasImage
+                        ? FileImage(File(imagePath))
+                        : null,
+                    child: !hasImage
+                        ? const Icon(
+                            Icons.person,
+                            color: Colors.white70,
+                            size: 22,
+                          )
+                        : null,
+                  ),
+                ),
+              );
+            },
+          ),
         ),
+
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -112,8 +159,8 @@ class _MainpageState extends State<Mainpage> {
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
               BottomNavigationBarItem(
-                icon: Icon(Icons.search),
-                label: 'Search',
+                icon: Icon(Icons.newspaper),
+                label: 'News',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.notifications),

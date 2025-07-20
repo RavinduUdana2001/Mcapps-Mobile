@@ -1,5 +1,8 @@
 // home_page.dart
+
 import 'package:flutter/material.dart';
+import 'package:mcapps/parts/LatestNewsCarousel.dart';
+import 'package:mcapps/parts/cardcontent.dart';
 import 'package:mcapps/services/weather_service.dart';
 
 class HomePage extends StatefulWidget {
@@ -22,7 +25,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadWeather() async {
-    final data = await WeatherService.fetchWeather("Colombo"); // You can change city
+    final data = await WeatherService.fetchWeather(
+      "Colombo",
+    ); // You can change city
     if (data != null) {
       setState(() {
         _temperature = "${data['main']['temp'].round()}°C";
@@ -38,9 +43,17 @@ class _HomePageState extends State<HomePage> {
       case 'clouds':
         return const Icon(Icons.cloud, color: Colors.grey, size: 18);
       case 'rain':
-        return const Icon(Icons.beach_access, color: Colors.blueAccent, size: 18);
+        return const Icon(
+          Icons.beach_access,
+          color: Colors.blueAccent,
+          size: 18,
+        );
       case 'snow':
-        return const Icon(Icons.ac_unit, color: Colors.lightBlueAccent, size: 18);
+        return const Icon(
+          Icons.ac_unit,
+          color: Colors.lightBlueAccent,
+          size: 18,
+        );
       default:
         return const Icon(Icons.cloud_queue, color: Colors.white70, size: 18);
     }
@@ -56,7 +69,9 @@ class _HomePageState extends State<HomePage> {
           // Transparent Card with Weather & Welcome Message
           Card(
             color: Colors.white.withOpacity(0.08),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             elevation: 0,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -72,7 +87,10 @@ class _HomePageState extends State<HomePage> {
                         const SizedBox(width: 4),
                         Text(
                           _temperature,
-                          style: const TextStyle(color: Colors.white70, fontSize: 14),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -85,11 +103,15 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.waving_hand_rounded,
-                              color: Colors.amberAccent, size: 22),
+                          const Icon(
+                            Icons.waving_hand_rounded,
+                            color: Colors.amberAccent,
+                            size: 22,
+                          ),
                           const SizedBox(width: 8),
                           Text(
-                            "Welcome, ${widget.displayName}",
+                            "Welcome, ${widget.displayName.split(' ').first}",
+
                             style: const TextStyle(
                               fontSize: 18,
                               color: Colors.white,
@@ -112,6 +134,35 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
+          ),
+          SizedBox(height: 10),
+
+          NewsCarousel(),
+          SizedBox(height: 10),
+          CardContent(
+            onCardTap: (index) {
+              // Navigate or update state based on index or title
+              switch (index) {
+                case 0:
+                  // Webmail logic
+                  break;
+                case 1:
+                  // HRIS
+                  break;
+                case 2:
+                  // More Apps
+                  break;
+                case 3:
+                  // McAlerts
+                  break;
+                case 4:
+                  // News & Events
+                  break;
+                case 5:
+                  // Lunch
+                  break;
+              }
+            },
           ),
         ],
       ),
