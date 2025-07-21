@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:mcapps/UserDrawer.dart';
 import 'package:mcapps/pages/NewsEvents.dart';
 import 'package:mcapps/pages/homepage.dart';
+import 'package:mcapps/pages/messages_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
@@ -45,12 +46,7 @@ class _MainpageState extends State<Mainpage> {
     _pages = [
       HomePage(displayName: user['displayname'] ?? 'User'),
       NewsEventsPage(),
-      const Center(
-        child: Text(
-          'Alerts Page',
-          style: TextStyle(fontSize: 24, color: Colors.white),
-        ),
-      ),
+      MessagesPage(),
       const Center(
         child: Text(
           'Profile Page',

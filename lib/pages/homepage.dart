@@ -135,7 +135,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-          SizedBox(height: 10),
+          SizedBox(height: 15),
 
           NewsCarousel(),
           SizedBox(height: 10),

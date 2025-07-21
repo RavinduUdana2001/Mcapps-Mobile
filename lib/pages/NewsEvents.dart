@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mcapps/pages/NewsDetailPage.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class NewsEventsPage extends StatefulWidget {
   const NewsEventsPage({super.key});
@@ -144,16 +145,13 @@ class _NewsEventsPageState extends State<NewsEventsPage> {
   }
 
   Widget _buildGridView() {
-    return GridView.builder(
+    return MasonryGridView.count(
       controller: _scrollController,
+      crossAxisCount: 2,
+      mainAxisSpacing: 14,
+      crossAxisSpacing: 14,
       itemCount: _items.length,
       physics: const BouncingScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-        childAspectRatio: 0.65,
-      ),
       itemBuilder: (context, index) => _buildCard(_items[index], true),
     );
   }
@@ -162,7 +160,11 @@ class _NewsEventsPageState extends State<NewsEventsPage> {
     final String imageUrl = item['image_url']?.toString() ?? '';
     final String title = item['title']?.toString() ?? 'Untitled';
     final String description = item['description']?.toString() ?? '';
-    final String createdAt = item['created_at']?.toString() ?? '';
+    final String rawDate = item['created_at']?.toString() ?? '';
+    final String createdAt = rawDate.isNotEmpty
+        ? DateTime.tryParse(rawDate)?.toLocal().toString().split(' ').first ??
+              ''
+        : '';
 
     return GestureDetector(
       onTap: () => _openDetailsPage(item),
