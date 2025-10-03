@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:mcapps/pages/lunchpage.dart';
 import 'dart:ui';
+import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mcapps/UserDrawer.dart';
 import 'package:mcapps/pages/NewsEvents.dart';
 import 'package:mcapps/pages/homepage.dart';
 import 'package:mcapps/pages/messages_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
 
 class Mainpage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -18,12 +19,23 @@ class Mainpage extends StatefulWidget {
 
 class _MainpageState extends State<Mainpage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  Future<String?> _loadProfileImagePath() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('profileImage');
-  }
-
   int _selectedIndex = 0;
+
+  String? _profileImagePath;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileImagePath(); // initial load
+    final user = widget.userData;
+
+    _pages = [
+      HomePage(displayName: user['displayname'] ?? 'User'),
+      NewsEventsPage(),
+      MessagesPage(),
+      LunchPage(userData:user) 
+    ];
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -34,37 +46,33 @@ class _MainpageState extends State<Mainpage> {
   late final List<Widget> _pages;
 
   void _refreshProfileImage() {
-    setState(() {}); // Triggers rebuild to reload image from SharedPreferences
+    _loadProfileImagePath(); // re-fetch after update
   }
 
-  @override
-  void initState() {
-    super.initState();
+  Future<void> _loadProfileImagePath() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = widget.userData['mail'];
+    if (email == null) return;
 
-    final user = widget.userData;
-
-    _pages = [
-      HomePage(displayName: user['displayname'] ?? 'User'),
-      NewsEventsPage(),
-      MessagesPage(),
-      const Center(
-        child: Text(
-          'Profile Page',
-          style: TextStyle(fontSize: 24, color: Colors.white),
-        ),
-      ),
-    ];
+    final path = prefs.getString('profileImage_$email');
+    if (path != _profileImagePath) {
+      setState(() {
+        _profileImagePath = path;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasImage =
+        _profileImagePath != null && File(_profileImagePath!).existsSync();
+
     return Scaffold(
-      key: _scaffoldKey, // <-- Add this line
+      key: _scaffoldKey,
       drawer: UserDrawer(
         userData: widget.userData,
-        onProfileImageUpdated:
-            _refreshProfileImage, // 🔁 Let Mainpage know when image is updated
-      ), // <-- Add the drawer
+        onProfileImageUpdated: _refreshProfileImage,
+      ),
       extendBodyBehindAppBar: true,
       extendBody: true,
       backgroundColor: Colors.transparent,
@@ -74,47 +82,30 @@ class _MainpageState extends State<Mainpage> {
         centerTitle: true,
         leading: Padding(
           padding: const EdgeInsets.only(left: 12.0),
-          child: FutureBuilder<String?>(
-            future: _loadProfileImagePath(),
-            builder: (context, snapshot) {
-              final imagePath = snapshot.data;
-              final hasImage =
-                  imagePath != null && File(imagePath).existsSync();
-
-              return GestureDetector(
-                onTap: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.8),
-                      width: 2,
-                    ),
-                  ),
-                  child: CircleAvatar(
-                    radius: 20,
-                    backgroundColor: Colors.white12,
-                    backgroundImage: hasImage
-                        ? FileImage(File(imagePath))
-                        : null,
-                    child: !hasImage
-                        ? const Icon(
-                            Icons.person,
-                            color: Colors.white70,
-                            size: 22,
-                          )
-                        : null,
-                  ),
+          child: GestureDetector(
+            onTap: () => _scaffoldKey.currentState?.openDrawer(),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.8),
+                  width: 2,
                 ),
-              );
-            },
+              ),
+              child: CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.white12,
+                backgroundImage:
+                    hasImage ? FileImage(File(_profileImagePath!)) : null,
+                child: !hasImage
+                    ? const Icon(Icons.person, color: Colors.white70, size: 22)
+                    : null,
+              ),
+            ),
           ),
         ),
-
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -154,18 +145,9 @@ class _MainpageState extends State<Mainpage> {
             selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.newspaper),
-                label: 'News',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.notifications),
-                label: 'Alerts',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person),
-                label: 'Profile',
-              ),
+              BottomNavigationBarItem(icon: Icon(Icons.newspaper), label: 'News'),
+              BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Alerts'),
+              BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Lunch'),
             ],
           ),
         ),

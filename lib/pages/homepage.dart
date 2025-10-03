@@ -1,5 +1,3 @@
-// home_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:mcapps/parts/LatestNewsCarousel.dart';
 import 'package:mcapps/parts/cardcontent.dart';
@@ -25,13 +23,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadWeather() async {
-    final data = await WeatherService.fetchWeather(
-      "Colombo",
-    ); // You can change city
-    if (data != null) {
+    final data = await WeatherService.fetchWeather("Colombo");
+    if (data != null && mounted) {
       setState(() {
         _temperature = "${data['main']['temp'].round()}°C";
-        _weather = data['weather'][0]['main']; // e.g., "Clear", "Clouds", etc.
+        _weather = data['weather'][0]['main']; // "Clear", "Clouds", etc.
       });
     }
   }
@@ -43,17 +39,9 @@ class _HomePageState extends State<HomePage> {
       case 'clouds':
         return const Icon(Icons.cloud, color: Colors.grey, size: 18);
       case 'rain':
-        return const Icon(
-          Icons.beach_access,
-          color: Colors.blueAccent,
-          size: 18,
-        );
+        return const Icon(Icons.beach_access, color: Colors.blueAccent, size: 18);
       case 'snow':
-        return const Icon(
-          Icons.ac_unit,
-          color: Colors.lightBlueAccent,
-          size: 18,
-        );
+        return const Icon(Icons.ac_unit, color: Colors.lightBlueAccent, size: 18);
       default:
         return const Icon(Icons.cloud_queue, color: Colors.white70, size: 18);
     }
@@ -61,111 +49,127 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Transparent Card with Weather & Welcome Message
-          Card(
-            color: Colors.white.withOpacity(0.08),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Stack(
-                children: [
-                  // Weather (top-right)
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: Row(
+    // LayoutBuilder + ConstrainedBox pattern:
+    // - fills available height when content is short
+    // - becomes scrollable when content is taller than the viewport
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Welcome + Weather Card
+                Card(
+                  color: Colors.white.withOpacity(0.08),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  elevation: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Stack(
                       children: [
-                        _getWeatherIcon(_weather),
-                        const SizedBox(width: 4),
-                        Text(
-                          _temperature,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
+                        // Weather (top-right)
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: Row(
+                            children: [
+                              _getWeatherIcon(_weather),
+                              const SizedBox(width: 4),
+                              Text(
+                                _temperature,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        // Welcome message
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.waving_hand_rounded,
+                                  color: Colors.amberAccent,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Welcome, ${widget.displayName.split(' ').first}",
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              "This is the official McLarens Group employee app to access alerts, news, events, and lunch selection.",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.white70,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
+                ),
 
-                  // Welcome message
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.waving_hand_rounded,
-                            color: Colors.amberAccent,
-                            size: 22,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            "Welcome, ${widget.displayName.split(' ').first}",
+                const SizedBox(height: 15),
 
-                            style: const TextStyle(
-                              fontSize: 18,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        "This is the official McLarens Group employee app to access alerts, news, events, and lunch selection.",
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white70,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                // News carousel
+                const NewsCarousel(),
+
+                const SizedBox(height: 10),
+
+                // Cards grid/list
+                CardContent(
+                  onCardTap: (index) {
+                    switch (index) {
+                      case 0:
+                        // Webmail
+                        break;
+                      case 1:
+                        // HRIS
+                        break;
+                      case 2:
+                        // More Apps
+                        break;
+                      case 3:
+                        // McAlerts
+                        break;
+                      case 4:
+                        // News & Events
+                        break;
+                      case 5:
+                        // Lunch
+                        break;
+                    }
+                  },
+                ),
+
+                // a little bottom padding for safe scrolling past last item
+                const SizedBox(height: 24),
+              ],
             ),
           ),
-          SizedBox(height: 15),
-
-          NewsCarousel(),
-          SizedBox(height: 10),
-          CardContent(
-            onCardTap: (index) {
-              // Navigate or update state based on index or title
-              switch (index) {
-                case 0:
-                  // Webmail logic
-                  break;
-                case 1:
-                  // HRIS
-                  break;
-                case 2:
-                  // More Apps
-                  break;
-                case 3:
-                  // McAlerts
-                  break;
-                case 4:
-                  // News & Events
-                  break;
-                case 5:
-                  // Lunch
-                  break;
-              }
-            },
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

@@ -31,42 +31,39 @@ class _UserDrawerState extends State<UserDrawer> {
   }
 
   Future<void> _loadProfileImage() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? email = widget.userData['mail'];
-    String? path = prefs.getString('profileImage');
+    final prefs = await SharedPreferences.getInstance();
+    final email = widget.userData['mail'];
+    if (email == null) return;
 
-    // Check local storage first
-    if (path != null && File(path).existsSync()) {
-      setState(() {
-        _profileImage = File(path);
-      });
-    }
-    // Then try to fetch from server
-    else if (email != null) {
+    final localPath = prefs.getString('profileImage_$email');
+
+    // Try loading locally first
+    if (localPath != null && File(localPath).existsSync()) {
+      setState(() => _profileImage = File(localPath));
+    } else {
+      // Then fetch from server
       try {
         final response = await http.post(
-          Uri.parse(
-            "https://test.mchostlk.com/get_profile_image.php",
-          ), // Replace with your server URL
+          Uri.parse("https://test.mchostlk.com/get_profile_image.php"),
           body: {'email': email},
         );
 
         if (response.statusCode == 200) {
           final imageUrl = response.body.trim();
 
-          final imageResponse = await http.get(Uri.parse(imageUrl));
-          final directory = await getApplicationDocumentsDirectory();
-          final filePath = '${directory.path}/downloaded_profile.jpg';
-          final file = File(filePath);
-          await file.writeAsBytes(imageResponse.bodyBytes);
+          if (imageUrl.isNotEmpty) {
+            final imageResponse = await http.get(Uri.parse(imageUrl));
+            final directory = await getApplicationDocumentsDirectory();
+            final filePath = '${directory.path}/profile_$email.jpg';
+            final file = File(filePath);
+            await file.writeAsBytes(imageResponse.bodyBytes);
 
-          await prefs.setString('profileImage', file.path);
-          setState(() {
-            _profileImage = file;
-          });
+            await prefs.setString('profileImage_$email', file.path);
+            setState(() => _profileImage = file);
+          }
         }
       } catch (e) {
-        debugPrint("Error loading image from server: $e");
+        debugPrint("❌ Error loading image: $e");
       }
     }
   }
@@ -81,9 +78,8 @@ class _UserDrawerState extends State<UserDrawer> {
     if (pickedFile != null) {
       final directory = await getApplicationDocumentsDirectory();
       final fileName = basename(pickedFile.path);
-      final savedImage = await File(
-        pickedFile.path,
-      ).copy('${directory.path}/$fileName');
+      final savedImage = await File(pickedFile.path)
+          .copy('${directory.path}/$fileName');
 
       // Upload to PHP server
       await _uploadToServer(
@@ -92,16 +88,13 @@ class _UserDrawerState extends State<UserDrawer> {
         widget.userData['displayname'],
       );
 
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? email = widget.userData['mail'];
-      String? path = email != null
-          ? prefs.getString('profileImage_$email')
-          : null;
+      final prefs = await SharedPreferences.getInstance();
+      final email = widget.userData['mail'];
+      if (email != null) {
+        await prefs.setString('profileImage_$email', savedImage.path);
+      }
 
-      setState(() {
-        _profileImage = savedImage;
-      });
-
+      setState(() => _profileImage = savedImage);
       widget.onProfileImageUpdated();
     }
   }
@@ -113,9 +106,7 @@ class _UserDrawerState extends State<UserDrawer> {
   ) async {
     if (email == null || name == null) return;
 
-    final uri = Uri.parse(
-      "https://test.mchostlk.com/upload_profile.php",
-    ); // Replace with your server URL
+    final uri = Uri.parse("https://test.mchostlk.com/upload_profile.php");
 
     try {
       final request = http.MultipartRequest('POST', uri)
@@ -126,12 +117,12 @@ class _UserDrawerState extends State<UserDrawer> {
       final response = await request.send();
 
       if (response.statusCode == 200) {
-        debugPrint("Image upload successful");
+        debugPrint("✅ Image upload successful");
       } else {
-        debugPrint("Image upload failed: ${response.statusCode}");
+        debugPrint("❌ Upload failed: ${response.statusCode}");
       }
     } catch (e) {
-      debugPrint("Upload error: $e");
+      debugPrint("❌ Upload error: $e");
     }
   }
 
@@ -159,15 +150,10 @@ class _UserDrawerState extends State<UserDrawer> {
                       CircleAvatar(
                         radius: 40,
                         backgroundColor: Colors.white12,
-                        backgroundImage: _profileImage != null
-                            ? FileImage(_profileImage!)
-                            : null,
+                        backgroundImage:
+                            _profileImage != null ? FileImage(_profileImage!) : null,
                         child: _profileImage == null
-                            ? const Icon(
-                                Icons.person,
-                                size: 40,
-                                color: Colors.white70,
-                              )
+                            ? const Icon(Icons.person, size: 40, color: Colors.white70)
                             : null,
                       ),
                       Positioned(
@@ -213,10 +199,7 @@ class _UserDrawerState extends State<UserDrawer> {
                 padding: EdgeInsets.zero,
                 children: [
                   const Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 8,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Text(
                       'User Info',
                       style: TextStyle(
@@ -225,21 +208,9 @@ class _UserDrawerState extends State<UserDrawer> {
                       ),
                     ),
                   ),
-                  _buildInfoTile(
-                    Icons.business,
-                    "Company",
-                    widget.userData['company'],
-                  ),
-                  _buildInfoTile(
-                    Icons.badge,
-                    "Title",
-                    widget.userData['title'],
-                  ),
-                  _buildInfoTile(
-                    Icons.account_tree,
-                    "Department",
-                    widget.userData['department'],
-                  ),
+                  _buildInfoTile(Icons.business, "Company", widget.userData['company']),
+                  _buildInfoTile(Icons.badge, "Title", widget.userData['title']),
+                  _buildInfoTile(Icons.account_tree, "Department", widget.userData['department']),
                   const Divider(color: Colors.white24, height: 30),
                   ListTile(
                     leading: const Icon(Icons.logout, color: Colors.redAccent),
@@ -251,11 +222,10 @@ class _UserDrawerState extends State<UserDrawer> {
                       ),
                     ),
                     onTap: () async {
-                      SharedPreferences prefs =
-                          await SharedPreferences.getInstance();
+                      final prefs = await SharedPreferences.getInstance();
                       await prefs.remove('isLoggedIn');
                       await prefs.remove('sessionToken');
-                      // DO NOT remove 'profileImage' or 'email'
+                      // ❗ DO NOT remove profileImage so user can come back
 
                       if (!mounted) return;
                       Navigator.of(context).pushAndRemoveUntil(

@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mcapps/login.dart';
 import 'package:mcapps/mainpage.dart';
+import 'package:mcapps/pages/message_detail_page.dart';
 
 class Splashscreen extends StatefulWidget {
-  const Splashscreen({super.key});
+  final Map<String, dynamic>? notificationData;
+
+  const Splashscreen({super.key, this.notificationData});
 
   @override
   State<Splashscreen> createState() => _SplashscreenState();
@@ -31,10 +35,33 @@ class _SplashscreenState extends State<Splashscreen>
     );
     _fadeController.forward();
 
-    Timer(const Duration(seconds: 5), _navigate);
+    Timer(const Duration(seconds: 3), _navigate);
   }
 
   Future<void> _navigate() async {
+    // ✅ Case: Opened from terminated notification
+    if (widget.notificationData != null) {
+      final rawTimestamp = int.tryParse(widget.notificationData!['timestamp'] ?? '');
+      final formatted = rawTimestamp != null
+          ? DateFormat('MMMM d, y – hh:mm a').format(
+              DateTime.fromMillisecondsSinceEpoch(rawTimestamp * 1000),
+            )
+          : 'Unknown Time';
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MessageDetailPage(
+            title: widget.notificationData!['title'] ?? 'No Title',
+            message: widget.notificationData!['message'] ?? 'No Message',
+            timestamp: formatted,
+          ),
+        ),
+      );
+      return;
+    }
+
+    // ✅ Otherwise: continue with login logic
     final prefs = await SharedPreferences.getInstance();
     final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
     final loginTimeStr = prefs.getString('loginTimestamp');
@@ -101,8 +128,6 @@ class _SplashscreenState extends State<Splashscreen>
                   ),
                   child: Image.asset('assets/loading-logo.png', height: 110),
                 ),
-
-
               ],
             ),
           ),
